@@ -376,7 +376,7 @@ button,input,select{font-family:inherit}
       <div style="border:1px solid #E2E8F0;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px">
         <strong style="font-size:16px">4 · รูปสินค้า ({{ hh.photos }}/3)</strong>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px"><sc-for list="{{ hhPhotos }}" as="p" hint-placeholder-count="3"><button onClick="{{ p.tap }}" style="all:unset;cursor:pointer;aspect-ratio:1/1;border-radius:12px;display:grid;place-items:center;text-align:center;font-size:13px;font-weight:600;line-height:1.3;background:{{ p.bg }};border:{{ p.bd }};color:#1E293B">{{ p.label }}</button></sc-for></div>
-        <span style="font-size:12px;color:#475569">แตะช่องว่างเพื่อถ่ายรูป · แตะรูปที่มีอยู่เพื่อลบ</span>
+        <span style="font-size:12px;color:#475569">แตะช่องว่างเพื่อถ่ายรูป · แตะรูปที่มีอยู่เพื่อดูเต็มจอ หรือลบ</span>
       </div>
       </sc-if>
     </sc-if>
@@ -435,7 +435,7 @@ button,input,select{font-family:inherit}
         <button onClick="{{ closeDetail }}" aria-label="ปิด" style="width:44px;height:44px;border:0;border-radius:8px;background:#F1F5F9;display:grid;place-items:center;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:24px;padding:20px">
         <div style="display:flex;flex-direction:column;gap:10px">
-          <div style="position:relative;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:repeating-linear-gradient(135deg,#F1F5F9 0 12px,#E8EDF3 12px 24px);display:grid;place-items:center;font-size:13px;color:#475569">ยังไม่มีรูปสินค้า<sc-if value="{{ d.hasImg }}" hint-placeholder-val="{{ false }}"><img loading="lazy" onError="{{ imgErr }}" onLoad="{{ imgOk }}" src="{{ d.imgSrc }}" alt="" referrerpolicy="no-referrer" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff"></sc-if></div>
+          <div onClick="{{ d.openMain }}" style="position:relative;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:repeating-linear-gradient(135deg,#F1F5F9 0 12px,#E8EDF3 12px 24px);display:grid;place-items:center;font-size:13px;color:#475569;cursor:{{ d.mainCursor }}">ยังไม่มีรูปสินค้า<sc-if value="{{ d.hasImg }}" hint-placeholder-val="{{ false }}"><img loading="lazy" onError="{{ imgErr }}" onLoad="{{ imgOk }}" src="{{ d.imgSrc }}" alt="" referrerpolicy="no-referrer" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff"></sc-if></div>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><sc-for list="{{ d.slots }}" as="p" hint-placeholder-count="3"><button onClick="{{ p.tap }}" style="all:unset;cursor:pointer;aspect-ratio:1/1;border-radius:12px;display:grid;place-items:center;text-align:center;font-size:12px;font-weight:600;background:{{ p.bg }};border:{{ p.bd }};color:#1E293B">{{ p.label }}</button></sc-for></div>
           <span style="font-size:12px;color:#475569">รูปสินค้า {{ d.photos }}/3 · {{ d.photoHint }}</span>
           <div style="display:flex;gap:12px;align-items:center;padding:12px;border-radius:12px;background:#F8FAFC"><img loading="lazy" src="{{ d.qr }}" alt="QR" style="width:84px;height:84px;image-rendering:pixelated;background:#fff;padding:4px;border-radius:6px"><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><strong style="font-size:13px">QR ของไอเทมนี้</strong><span style="font-size:12px;font-family:'Fira Code',monospace;color:#475569">เนื้อหา = {{ d.code }}</span></div></div>
@@ -498,6 +498,25 @@ button,input,select{font-family:inherit}
       <div style="padding:0 16px 12px"><input autoFocus="{{ true }}" value="{{ manual }}" onChange="{{ onManual }}" onKeyDown="{{ onManualKey }}" placeholder="หรือพิมพ์ / ยิงบาร์โค้ดที่นี่ แล้วกด Enter" style="width:100%;min-height:48px;border:1px solid #CBD5E1;border-radius:8px;padding:0 12px;font-size:16px;font-family:'Fira Code',monospace"></div>
       <div style="padding:0 16px 16px;display:flex;gap:8px"><button onClick="{{ closeScan }}" style="flex:1;min-height:44px;border:0;border-radius:8px;background:#F1F5F9;font-size:15px;cursor:pointer">ปิด</button></div>
     </div>
+  </div>
+</sc-if>
+
+<!-- PHOTO VIEWER -->
+<sc-if value="{{ pv.open }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ pv.close }}" style="position:fixed;inset:0;z-index:70;background:#000;display:flex;flex-direction:column">
+    <div onClick="{{ stop }}" style="flex:none;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px 16px;color:#fff;background:rgba(0,0,0,.6)">
+      <span style="margin-right:auto;font-size:14px;font-family:'Fira Code',monospace;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ pv.title }}</span>
+      <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}"><button onClick="{{ pv.del }}" style="min-height:44px;padding:0 16px;border:0;border-radius:10px;background:#B91C1C;color:#fff;font-size:15px;font-weight:600;cursor:pointer">ลบรูป</button></sc-if>
+      <button onClick="{{ pv.close }}" aria-label="ปิด" style="width:44px;height:44px;border:0;border-radius:10px;background:rgba(255,255,255,.18);color:#fff;font-size:22px;cursor:pointer">×</button>
+    </div>
+    <div onClick="{{ stop }}" onTouchStart="{{ pv.ts }}" onTouchEnd="{{ pv.te }}" style="flex:1;min-height:0;position:relative;display:grid;place-items:center;overflow:hidden">
+      <img loading="lazy" onError="{{ imgErr }}" onLoad="{{ imgOk }}" src="{{ pv.src }}" alt="" referrerpolicy="no-referrer" style="max-width:100%;max-height:100%;object-fit:contain;display:block">
+      <sc-if value="{{ pv.multi }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ pv.prev }}" aria-label="รูปก่อนหน้า" style="position:absolute;left:10px;top:50%;margin-top:-26px;width:52px;height:52px;border:0;border-radius:26px;background:rgba(255,255,255,.2);color:#fff;font-size:26px;cursor:pointer">‹</button>
+        <button onClick="{{ pv.next }}" aria-label="รูปถัดไป" style="position:absolute;right:10px;top:50%;margin-top:-26px;width:52px;height:52px;border:0;border-radius:26px;background:rgba(255,255,255,.2);color:#fff;font-size:26px;cursor:pointer">›</button>
+      </sc-if>
+    </div>
+    <div onClick="{{ stop }}" style="flex:none;height:calc(12px + env(safe-area-inset-bottom));background:rgba(0,0,0,.6)"></div>
   </div>
 </sc-if>
 
@@ -576,7 +595,7 @@ const DEFAULT_SHEET = 'https://docs.google.com/spreadsheets/d/18CuoKPSg-VBFAFIEO
 const IMP0 = { fileName: 'ยังไม่ได้เลือกไฟล์', has: false, mapping: [], nNew: 0, nUpd: 0, nSame: 0, rows: [], todo: [], moreText: '', busy: false, msg: '' };
 
 class Component extends DCLogic {
-  state = { items: loadCache(), loading: true, live: false, loadErr: '', view: 'cat', sort: 'default', q: '', zone: 'ทั้งหมด', ct: 'ทั้งหมด', mv: 'ทั้งหมด', mode: ls('thamc_mode') || (window.innerWidth < 900 ? 'g2' : 'grid'), fsOpen: false, ctQ: '', limit: 48, w: window.innerWidth, detail: null, scanOpen: false, scanMode: 'open', manual: '', toast: '', newRef: '', newBc: '', cab: '', cabDefs: {}, admin: !!ls('thamc_pin', undefined, true), labelQ: '', assign: { open: false, slot: '', q: '' }, lb: loadLb(), hh: { item: '', newLoc: '', newRef: '', newBc: '', find: '' }, imp: IMP0, dlg: { open: false, fields: [], values: {}, error: '' }, sbW: Math.min(360, Math.max(72, +ls('thamc_sbw') || 256)), cabQ: '', cabZone: 'ทั้งหมด', cabState: 'ทั้งหมด', cabCollapsed: false, more: false, scanInfo: '', scanMsg: null, mig: MIG0 };
+  state = { items: loadCache(), loading: true, live: false, loadErr: '', view: 'cat', sort: 'default', q: '', zone: 'ทั้งหมด', ct: 'ทั้งหมด', mv: 'ทั้งหมด', mode: ls('thamc_mode') || (window.innerWidth < 900 ? 'g2' : 'grid'), fsOpen: false, ctQ: '', limit: 48, w: window.innerWidth, detail: null, scanOpen: false, scanMode: 'open', manual: '', toast: '', newRef: '', newBc: '', cab: '', cabDefs: {}, admin: !!ls('thamc_pin', undefined, true), labelQ: '', assign: { open: false, slot: '', q: '' }, lb: loadLb(), hh: { item: '', newLoc: '', newRef: '', newBc: '', find: '' }, imp: IMP0, pv: { open: false, code: '', k: 0 }, dlg: { open: false, fields: [], values: {}, error: '' }, sbW: Math.min(360, Math.max(72, +ls('thamc_sbw') || 256)), cabQ: '', cabZone: 'ทั้งหมด', cabState: 'ทั้งหมด', cabCollapsed: false, more: false, scanInfo: '', scanMsg: null, mig: MIG0 };
 
   api() { return new URLSearchParams(location.search).get('api') || ls('thamc_api') || (window.APP_CONFIG || {}).API_URL || DEFAULT_API; }
   say(t) { this.setState({ toast: t }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: '' }), 3200); }
@@ -606,12 +625,12 @@ class Component extends DCLogic {
   }
   deepLink() { const m = (location.hash.match(/item\/([\w-]+)/) || [])[1] || new URLSearchParams(location.search).get('item'); if (m && this.state.items.some(i => i.code === m)) this.setState({ view: 'cat', detail: m }); }
   componentDidUpdate() {
-    const s = this.state, open = !!(s.detail || s.scanOpen || s.fsOpen || s.more || s.assign.open);
+    const s = this.state, open = !!(s.detail || s.scanOpen || s.fsOpen || s.more || s.assign.open || s.pv.open);
     if (open && !this._ov) { this._ov = true; try { history.pushState({ ov: 1 }, ''); } catch (e) {} }
     else if (!open && this._ov) { this._ov = false; if (history.state && history.state.ov) { this._skipPop = true; history.back(); } }
   }
   componentDidMount() {
-    this._pop = () => { if (this._skipPop) { this._skipPop = false; return; } const s = this.state; if (s.detail || s.scanOpen || s.fsOpen || s.more || s.assign.open) { this.stopCam(); this.setState({ detail: null, scanOpen: false, scanMsg: null, fsOpen: false, more: false, assign: { open: false, slot: '', q: '' } }); } };
+    this._pop = () => { if (this._skipPop) { this._skipPop = false; return; } const s = this.state; if (s.pv.open) { this.setState({ pv: { open: false, code: '', k: 0 } }); return; } if (s.detail || s.scanOpen || s.fsOpen || s.more || s.assign.open) { this.stopCam(); this.setState({ detail: null, scanOpen: false, scanMsg: null, fsOpen: false, more: false, assign: { open: false, slot: '', q: '' } }); } };
     window.addEventListener('popstate', this._pop);
     this._rs = () => this.setState({ w: window.innerWidth }); window.addEventListener('resize', this._rs);
     const p = new URLSearchParams(location.search); if (p.get('scan')) this.openScan('open');
@@ -636,12 +655,22 @@ class Component extends DCLogic {
       catch (e) { err = /แอดมิน/.test(e.message) ? 'รหัสผ่านไม่ถูกต้อง' : 'เข้าสู่ระบบไม่ได้: ' + e.message; }
     }
   }
-  shrink(file) { return new Promise(res => { const im = new Image(); im.onload = () => { const k = Math.min(1, 1024 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = im.width * k; c.height = im.height * k; c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.8)); }; im.src = URL.createObjectURL(file); }); }
+  shrink(file) { return new Promise((res, rej) => { const url = URL.createObjectURL(file), im = new Image(); im.onload = () => { try { const k = Math.min(1, 1280 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.82)); } catch (e) { rej(e); } }; im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('อ่านไฟล์รูปไม่ได้ (ลองถ่ายใหม่ หรือเลือกรูปแบบ JPG)')); }; im.src = url; }); }
   addPhoto(code, slot, cam) {
     if (!this.state.admin) return this.deny();
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; if (cam) inp.setAttribute('capture', 'environment');
-    inp.onchange = async () => { const f = inp.files[0]; if (!f) return; const cur = this.state.items.find(i => i.code === code); if (cur && cur.photos >= 3) return this.say('สินค้านี้มีรูปครบ 3 รูปแล้ว ลบรูปเดิมก่อนจึงเพิ่มได้'); const data = await this.shrink(f); this.say('กำลังอัปโหลดรูป…'); const j = await this.save({ action: 'photo', code, data, mime: 'image/jpeg' }, 'เพิ่มรูปแล้ว'); if (j) this.upd(code, i => ({ ...i, photos: i.photos + 1, thumbs: [...(i.thumbs || []), data], pids: [...(i.pids || []), j.id] }), true); };
-    inp.click();
+    inp.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0';
+    inp.addEventListener('change', async () => {
+      try {
+        const f = inp.files && inp.files[0]; if (!f) return;
+        const cur = this.state.items.find(i => i.code === code); if (cur && cur.photos >= 3) return this.say('สินค้านี้มีรูปครบ 3 รูปแล้ว ลบรูปเดิมก่อนจึงเพิ่มได้');
+        this.say('กำลังย่อรูปและอัปโหลด…'); const data = await this.shrink(f);
+        const j = await this.call({ action: 'photo', code, data, mime: 'image/jpeg' });
+        this.upd(code, i => ({ ...i, photos: i.photos + 1, thumbs: [...(i.thumbs || []), data], pids: [...(i.pids || []), j.id] }), true); this.say('เพิ่มรูปแล้ว');
+      } catch (e) { this.say('อัปโหลดรูปไม่สำเร็จ: ' + (e && e.message ? e.message : e)); }
+      finally { setTimeout(() => inp.remove(), 1500); }
+    });
+    document.body.appendChild(inp); inp.click();
   }
   norm(v) { return String(v == null ? '' : v).toUpperCase().replace(/[\s\-]/g, ''); }
   findItem(v) {
@@ -885,13 +914,13 @@ class Component extends DCLogic {
     const hhCab = (locParts(newLoc) || locParts(hhI && hhI.loc) || {}).cab, free = [];
     if (hhCab && cm.has(hhCab)) { const c = cm.get(hhCab); for (let a = 1; a <= c.shelves && free.length < 8; a++) for (let b = 1; b <= c.slots && free.length < 8; b++) { const id = hhCab + '-' + pad2(a) + '-' + pad2(b); if (!occ[id]) free.push({ id, pick: () => setHh({ newLoc: id }) }); } }
     const hh = hhI ? { has: true, code: hhI.code, name: hhI.name, uom: hhI.uom, qty: hhI.qty, locText: hhI.loc || '-', hasImg: !!(hhI.thumbs && hhI.thumbs[0]), imgSrc: hhI.thumbs && hhI.thumbs[0], newLoc: s.hh.newLoc, newLocText: newLoc || '-', occText: others.length ? 'ช่องนี้มีสินค้าอยู่แล้ว ' + others.length + ' รายการ: ' + others.slice(0, 2).map(i => i.name).join(' / ') + ' · ย้ายซ้อนได้' : '', bcCount: hhI.bc.length, refCount: hhI.ref.length, photos: hhI.photos, find: s.hh.find, newBc: s.hh.newBc, newRef: s.hh.newRef } : { has: false, find: s.hh.find };
-    const hhPhotos = hhI ? [0, 1, 2].map(k => { const on = k < hhI.photos; return { label: on ? 'รูป ' + (k + 1) + ' ✕' : '+ ถ่ายรูป', bg: on ? (hhI.thumbs && hhI.thumbs[k] ? '#E2E8F0 center/cover no-repeat url(' + hhI.thumbs[k] + ')' : '#E2E8F0') : '#fff', bd: on ? '1px solid #CBD5E1' : '1.5px dashed #94A3B8', tap: () => on ? this.delPhoto(hhI.code, k) : this.addPhoto(hhI.code, k, true) }; }) : [];
+    const hhPhotos = hhI ? [0, 1, 2].map(k => { const on = k < hhI.photos; return { label: on ? (hhI.thumbs && hhI.thumbs[k] ? '' : 'รูป ' + (k + 1)) : '+ ถ่ายรูป', bg: on ? (hhI.thumbs && hhI.thumbs[k] ? '#E2E8F0 center/cover no-repeat url(' + hhI.thumbs[k] + ')' : '#E2E8F0') : '#fff', bd: on ? '1px solid #CBD5E1' : '1.5px dashed #94A3B8', tap: () => on ? this.setState({ pv: { open: true, code: hhI.code, k } }) : this.addPhoto(hhI.code, k, true) }; }) : [];
     const addBc = async (code, val) => { val = String(val).trim(); if (!val) return; const o = this.findItem(val); if (o) return say(o.code === code ? 'บาร์โค้ดนี้ผูกกับสินค้านี้แล้ว' : 'บาร์โค้ดนี้ซ้ำกับสินค้า ' + o.code); if (!(await this.confirmD('เพิ่มบาร์โค้ด', 'เพิ่มบาร์โค้ด ' + val + '\nให้สินค้า ' + code + ' ?', 'add', 'เพิ่ม'))) return; this.upd(code, i => ({ ...i, bc: [...i.bc, val] })); };
     const addRef = async (code, val) => { val = String(val).trim(); if (!val) return; if (!(await this.confirmD('เพิ่มเลข REF', 'เพิ่ม REF ' + val + '\nให้สินค้า ' + code + ' ?', 'add', 'เพิ่ม'))) return; this.upd(code, i => i.ref.includes(val) ? i : ({ ...i, ref: [...i.ref, val] })); };
     /* detail */
     const d0 = s.detail ? byCode(s.detail) : null;
-    const d = d0 ? { open: true, ...d0, hasLoc: !!d0.loc, locText: d0.loc || '-', tuhText: d0.tuh || '-', costText: Number(d0.cost).toLocaleString('en-US', { minimumFractionDigits: 2 }), cat: d0.cat || '-', hasImg: !!(d0.thumbs && d0.thumbs[0]), imgSrc: d0.thumbs && d0.thumbs[0], qr: qrUri(d0.code), photoHint: admin ? 'แตะช่องว่างเพื่อเพิ่มรูป · แตะรูปเพื่อลบ' : 'เข้าสู่ระบบแอดมินเพื่อเพิ่ม/ลบรูป', mvText: d0.moving ? 'เคลื่อนไหว' : 'ไม่เคลื่อนไหว', newBtn: d0.isNew ? 'ยกเลิก New!' : 'ทำเครื่องหมาย New!',
-      slots: [0, 1, 2].map(k => { const on = k < d0.photos; return { label: on ? (d0.thumbs && d0.thumbs[k] ? '' : 'รูป ' + (k + 1)) : admin ? '+ เพิ่มรูป' : 'ว่าง', bg: on ? (d0.thumbs && d0.thumbs[k] ? '#E2E8F0 center/cover no-repeat url(' + d0.thumbs[k] + ')' : '#E2E8F0') : '#fff', bd: on ? '1px solid #CBD5E1' : '1.5px dashed #94A3B8', tap: () => on ? this.delPhoto(d0.code, k) : this.addPhoto(d0.code, k, false) }; }),
+    const d = d0 ? { open: true, ...d0, hasLoc: !!d0.loc, locText: d0.loc || '-', tuhText: d0.tuh || '-', costText: Number(d0.cost).toLocaleString('en-US', { minimumFractionDigits: 2 }), cat: d0.cat || '-', hasImg: !!(d0.thumbs && d0.thumbs[0]), imgSrc: d0.thumbs && d0.thumbs[0], qr: qrUri(d0.code), photoHint: admin ? 'แตะช่องว่างเพื่อเพิ่มรูป · แตะรูปเพื่อดูเต็มจอ / ลบ' : 'แตะรูปเพื่อดูเต็มจอ', openMain: () => { if (d0.photos > 0) this.setState({ pv: { open: true, code: d0.code, k: 0 } }); }, mainCursor: d0.photos > 0 ? 'zoom-in' : 'default', mvText: d0.moving ? 'เคลื่อนไหว' : 'ไม่เคลื่อนไหว', newBtn: d0.isNew ? 'ยกเลิก New!' : 'ทำเครื่องหมาย New!',
+      slots: [0, 1, 2].map(k => { const on = k < d0.photos; return { label: on ? (d0.thumbs && d0.thumbs[k] ? '' : 'รูป ' + (k + 1)) : admin ? '+ เพิ่มรูป' : 'ว่าง', bg: on ? (d0.thumbs && d0.thumbs[k] ? '#E2E8F0 center/cover no-repeat url(' + d0.thumbs[k] + ')' : '#E2E8F0') : '#fff', bd: on ? '1px solid #CBD5E1' : '1.5px dashed #94A3B8', tap: () => on ? this.setState({ pv: { open: true, code: d0.code, k } }) : this.addPhoto(d0.code, k, false) }; }),
       refs: d0.ref.map(x => ({ v: x, xd, rm: () => this.delFrom(d0.code, 'REF', x, 'ref') })),
       bcs: d0.bc.map(x => ({ v: x, xd, rm: () => this.delFrom(d0.code, 'บาร์โค้ด', x, 'bc') })) } : { open: false, slots: [], refs: [], bcs: [] };
     const lay = (() => { const cp = s.w < 900; return { compact: cp, wide: !cp, cols: cp ? 'minmax(0,1fr)' : s.sbW + 'px minmax(0,1fr)', sbFull: !cp && s.sbW >= 130, sbMini: !cp && s.sbW < 130, navJ: s.sbW < 130 ? 'center' : 'flex-start', sbPad: s.sbW < 130 ? '12px 8px' : '12px', tgAlign: s.sbW < 130 ? 'center' : 'flex-end', tgIcon: s.sbW < 130 ? '›' : '‹', handleLeft: s.sbW - 4, cabPos: s.w < 1000 ? 'static' : 'sticky', aPos: cp ? 'fixed' : 'sticky', aTop: cp ? 'auto' : '0', aBottom: cp ? '0' : 'auto', aRight: cp ? '0' : 'auto', aH: cp ? 'auto' : '100vh', aDir: cp ? 'row' : 'column', aPad: cp ? '8px 8px calc(8px + env(safe-area-inset-bottom))' : '16px 12px', bR: cp ? 'none' : '1px solid #E2E8F0', bT: cp ? '1px solid #E2E8F0' : 'none', padX: cp ? 16 : 32, padB: cp ? 100 : 56, locCols: s.w < 1000 ? 'minmax(0,1fr)' : (s.cabCollapsed ? '64px minmax(0,1fr)' : '270px minmax(0,1fr)'), cabMaxH: s.w < 1000 ? (s.cabCollapsed ? 'none' : '360px') : 'calc(100vh - 110px)', labCols: s.w < 1000 ? 'minmax(0,1fr)' : 'minmax(300px,380px) minmax(0,1fr)', modalPad: cp ? 0 : 40, toastB: cp ? 96 : 24, tabCols: admin ? 5 : 3, hhCols: s.w < 1100 ? 'minmax(0,1fr)' : 'repeat(2,minmax(0,1fr))', h1: cp ? 18 : 22, dlgAlign: cp ? 'flex-end' : 'center', cardMinH: cp ? '100%' : 'auto', dlgPad: cp ? '0' : '24px', dlgRadius: cp ? '20px 20px 0 0' : '20px', fsPad: cp ? '0' : '24px', fsMaxH: cp ? '90vh' : '85vh' }; })();
@@ -944,6 +973,10 @@ class Component extends DCLogic {
       goLabelFromDetail: () => this.setState({ view: 'label', lb: { ...lb, item: s.detail }, detail: null }),
       scanOpen: s.scanOpen, scan: { title: SC[0], hint: SC[1], info: s.scanInfo, hasMsg: !!(s.scanMsg && s.scanMsg.text), msg: s.scanMsg ? s.scanMsg.text : '' }, openScan: () => this.openScan('open'), closeScan: () => this.closeScan(), setVideo: this.setVideo,
       manual: s.manual, onManual: e => this.setState({ manual: e.target.value }), onManualKey: e => { if (e.key === 'Enter') this.found(e.target.value); },
+      pv: (() => { const p = s.pv, it = p.open ? byCode(p.code) : null; if (!it || !it.photos) return { open: false }; const n = it.photos, k = Math.min(p.k, n - 1), id = it.pids && it.pids[k], go = d => this.setState({ pv: { open: true, code: it.code, k: (k + d + n) % n } });
+        return { open: true, title: it.code + ' · รูป ' + (k + 1) + ' / ' + n, src: id ? 'https://drive.google.com/thumbnail?id=' + id + '&sz=w1600' : (it.thumbs || [])[k], multi: n > 1, close: () => this.setState({ pv: { open: false, code: '', k: 0 } }), prev: () => go(-1), next: () => go(1),
+          ts: e => { this._tx = e.touches && e.touches[0] ? e.touches[0].clientX : null; }, te: e => { if (this._tx == null || n < 2) return; const x = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : this._tx, dx = x - this._tx; this._tx = null; if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1); },
+          del: async () => { if (!admin) return this.deny(); const before = it.photos; await this.delPhoto(it.code, k); const now = this.state.items.find(i => i.code === it.code); if (!now || now.photos >= before) return; if (now.photos <= 0) this.setState({ pv: { open: false, code: '', k: 0 } }); else this.setState({ pv: { open: true, code: it.code, k: Math.min(k, now.photos - 1) } }); } }; })(),
       imgErr: e => { e.target.style.display = 'none'; }, imgOk: e => { e.target.style.display = ''; },
       dlg: (() => { const d = s.dlg, T = TONE[d.tone] || TONE.info, fl = d.fields || []; return { open: !!d.open, title: d.title, message: d.message, hasMsg: !!d.message, bg: T.bg, fg: T.fg, btn: T.btn, d: T.d, okLabel: d.okLabel, cancelLabel: d.cancelLabel, hasFields: fl.length > 0, okFocus: !fl.length, error: d.error, hasError: !!d.error, fields: fl.map((f, k) => ({ key: f.key, label: f.label, type: f.type || 'text', placeholder: f.placeholder || '', value: (d.values || {})[f.key], af: k === 0, on: e => { const v = e.target.value; this.setState(st => ({ dlg: { ...st.dlg, values: { ...st.dlg.values, [f.key]: v }, error: '' } })); } })), ok: () => this.dlgOk(), cancel: () => this.dlgClose(null), onKey: e => { if (e.key === 'Enter') { e.preventDefault(); this.dlgOk(); } else if (e.key === 'Escape') this.dlgClose(null); } }; })(),
       hasToast: !!s.toast, toast: s.toast
