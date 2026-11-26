@@ -1,7 +1,7 @@
 {
-  "name": "THAMC Inventory · คลังเวชภัณฑ์",
-  "short_name": "คลังเวชภัณฑ์",
-  "description": "ระบบจัดการคลังเวชภัณฑ์ ศูนย์การแพทย์ธรรมศาสตร์",
+  "name": "catalog-location",
+  "short_name": "catalog-location",
+  "description": "catalog-location · ระบบจัดการคลังเวชภัณฑ์ THAMC",
   "lang": "th",
   "start_url": "./?source=pwa",
   "scope": "./",

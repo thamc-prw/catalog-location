@@ -54,6 +54,7 @@ function doPost(e) {
     if (b.action === 'update') return json_(updateItem_(b));
     if (b.action === 'cab') return json_(saveCab_(b));
     if (b.action === 'import') return json_(importRows_(b));
+    if (b.action === 'migrate') return json_(migratePhotos_(b));
     if (b.action === 'photo') return json_(savePhoto_(b));
     return json_({ ok: false, error: 'unknown action' });
   } catch (err) { return json_({ ok: false, error: String(err) }); }
@@ -111,7 +112,7 @@ function saveCab_(b) {
 function importRows_(b) {
   const sh = items_(), rows = b.rows || [];
   const last = sh.getLastRow();
-  const data = sh.getRange(1, 1, last, 13).getValues();
+  const data = sh.getRange(1, 1, last, 14).getValues();
   const idx = {};
   for (let i = 1; i < data.length; i++) idx[String(data[i][0])] = i;
   let added = 0, updated = 0;
@@ -121,11 +122,11 @@ function importRows_(b) {
     if (idx[code] !== undefined) {
       const r = data[idx[code]], keepImg = r[9];
       for (let c = 0; c < 13; c++) r[c] = vals[c];
-      if (!o.img) r[9] = keepImg;
+      if (!o.img) r[9] = keepImg; else if (String(o.img) !== String(keepImg)) r[13] = '';
       updated++;
-    } else { const nr = vals.slice(); data.push(nr); idx[code] = data.length - 1; added++; }
+    } else { const nr = vals.slice(); nr.push(''); data.push(nr); idx[code] = data.length - 1; added++; }
   });
-  sh.getRange(1, 1, data.length, 13).setValues(data);
+  sh.getRange(1, 1, data.length, 14).setValues(data);
   log_(b.user, 'import', '', 'added ' + added + ', updated ' + updated);
   return { ok: true, added, updated };
 }
@@ -169,6 +170,41 @@ function savePhoto_(b) {
   }
   log_(b.user, 'photo', b.code, 'slot ' + (slot + 1) + ' ' + file.getId());
   return { ok: true, id: file.getId(), slot };
+}
+
+/**
+ * ย้ายรูปจากลิงก์ Drive เดิม (คอลัมน์ J) มาทำสำเนาเก็บในโฟลเดอร์ Drive ของระบบ แล้วแทนที่ลิงก์
+ * คอลัมน์ N = สถานะ: ok / error: ... (ว่าง = ยังไม่ย้าย) · เรียกซ้ำจนกว่า pending = 0
+ * b.limit = จำนวนไฟล์ต่อรอบ (0 = ดูสถานะเฉยๆ) · b.retry = true เพื่อลองรายการ error ใหม่
+ */
+function migratePhotos_(b) {
+  const t0 = Date.now(), sh = items_(), last = sh.getLastRow();
+  if (last < 2) return { ok: true, total: 0, okN: 0, errN: 0, pending: 0, progressed: 0 };
+  if (!String(sh.getRange(1, 14).getValue())) sh.getRange(1, 14).setValue('รูปย้ายแล้ว');
+  const rng = sh.getRange(2, 10, last - 1, 5).getValues(); // J..N
+  const limit = Number(b.limit) || 0, folder = limit ? folder_() : null;
+  let total = 0, okN = 0, errN = 0, pending = 0, progressed = 0;
+  for (let i = 0; i < rng.length; i++) {
+    const link = String(rng[i][0] || ''), mark = String(rng[i][4] || '');
+    if (!link) continue;
+    total++;
+    if (mark === 'ok') { okN++; continue; }
+    if (mark && !b.retry) { errN++; continue; }
+    if (!limit || progressed >= limit || Date.now() - t0 > 240000) { pending++; continue; }
+    const row = i + 2, id = driveId_(link);
+    progressed++;
+    if (!id) { sh.getRange(row, 14).setValue('error: ไม่พบรหัสไฟล์ในลิงก์'); errN++; continue; }
+    try {
+      const src = DriveApp.getFileById(id);
+      const copy = src.makeCopy(src.getName(), folder);
+      copy.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      sh.getRange(row, 10).setValue(copy.getUrl());
+      sh.getRange(row, 14).setValue('ok');
+      okN++;
+    } catch (e) { sh.getRange(row, 14).setValue('error: ' + String(e).slice(0, 90)); errN++; }
+  }
+  if (progressed) log_(b.user, 'migrate', '', 'ok ' + okN + ', error ' + errN + ', pending ' + pending);
+  return { ok: true, total, okN, errN, pending, progressed };
 }
 
 /* ---------- helpers ---------- */
