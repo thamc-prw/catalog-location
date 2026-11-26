@@ -53,6 +53,9 @@ function doPost(e) {
     if (b.action === 'login') return json_({ ok: true });
     if (b.action === 'update') return json_(updateItem_(b));
     if (b.action === 'cab') return json_(saveCab_(b));
+    if (b.action === 'delCab') return json_(delCab_(b));
+    if (b.action === 'setLocs') return json_(setLocs_(b));
+    if (b.action === 'delItem') return json_(delItem_(b));
     if (b.action === 'import') return json_(importRows_(b));
     if (b.action === 'migrate') return json_(migratePhotos_(b));
     if (b.action === 'photo') return json_(savePhoto_(b));
@@ -105,6 +108,36 @@ function saveCab_(b) {
   const vals = [String(b.cab), Number(b.shelves) || 0, Number(b.slots) || 0];
   if (row) sh.getRange(row, 1, 1, 3).setValues([vals]); else sh.appendRow(vals);
   log_(b.user, 'cab', b.cab, b.shelves + 'x' + b.slots);
+  return { ok: true };
+}
+
+/** ตั้ง/ล้าง Location หลายรายการพร้อมกัน: changes = [{code, loc}] (loc '' = นำออกจากช่อง) */
+function setLocs_(b) {
+  const sh = items_(), last = sh.getLastRow(); if (last < 2) return { ok: true, n: 0 };
+  const idx = {}; sh.getRange(2, 1, last - 1, 1).getValues().forEach((r, i) => { idx[String(r[0])] = i; });
+  const rng = sh.getRange(2, 4, last - 1, 1), vals = rng.getValues(); let n = 0;
+  (b.changes || []).forEach(c => { const i = idx[String(c.code)]; if (i !== undefined) { vals[i][0] = c.loc || ''; n++; } });
+  rng.setValues(vals); log_(b.user, 'setLocs', '', n + ' items');
+  return { ok: true, n };
+}
+
+/** ลบสินค้าออกจากระบบถาวร (แถวใน FRZ294 และแถวใน Extra) */
+function delItem_(b) {
+  const sh = items_(), row = findRow_(sh, b.code);
+  if (!row) return { ok: false, error: 'ไม่พบรหัส ' + b.code };
+  sh.deleteRow(row);
+  const ex = ss_().getSheetByName(CFG.SHEET_EXTRA), er = ex ? findRow_(ex, b.code) : 0;
+  if (er) ex.deleteRow(er);
+  log_(b.user, 'delItem', b.code, '');
+  return { ok: true };
+}
+
+function delCab_(b) {
+  const prefix = String(b.cab) + '-', sh = items_(), last = sh.getLastRow();
+  if (last > 1 && sh.getRange(2, 4, last - 1, 1).getValues().some(r => String(r[0]).indexOf(prefix) === 0)) return { ok: false, error: 'ตู้ ' + b.cab + ' ยังมีสินค้า' };
+  const loc = ss_().getSheetByName(CFG.SHEET_LOC), row = loc ? findRow_(loc, b.cab) : 0;
+  if (row) loc.deleteRow(row);
+  log_(b.user, 'delCab', b.cab, '');
   return { ok: true };
 }
 
