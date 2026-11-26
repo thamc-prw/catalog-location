@@ -542,7 +542,7 @@ const barUri = text => {
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwXONxGq66YYsvgPhPzyY1dVDPwltoN4hjEdeTu-KGQO8bSm3vR1Vw_JZt8t7tPi5BI/exec';
 const ls = (k, v, sess) => { try { const st = sess ? sessionStorage : localStorage; return v === undefined ? st.getItem(k) : v === null ? st.removeItem(k) : st.setItem(k, v); } catch (e) { return ''; } };
 const driveImg = id => 'https://drive.google.com/thumbnail?id=' + id + '&sz=w800';
-const j2i = a => ({ code: a.code, tuh: a.tuh, name: a.name, loc: a.loc, uom: a.uom, cat: a.cat, gcode: a.gcode, vendor: a.vendor, cost: a.cost, qty: a.qty, ref: a.ref, bc: a.bc, exp: a.exp, isNew: a.isNew, moving: a.moving, photos: a.photoIds.length, thumbs: a.photoIds.map(driveImg) });
+const j2i = a => ({ code: a.code, tuh: a.tuh, name: a.name, loc: a.loc, uom: a.uom, cat: a.cat, gcode: a.gcode, vendor: a.vendor, cost: a.cost, qty: a.qty, ref: a.ref, bc: a.bc, exp: a.exp, isNew: a.isNew, moving: a.moving, photos: a.photoIds.length, pids: a.photoIds, thumbs: a.photoIds.map(driveImg) });
 const TONE = { danger: { bg: '#FEE2E2', fg: '#B91C1C', btn: '#B91C1C', d: 'M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01' }, add: { bg: '#ECFDF5', fg: '#047857', btn: '#047857', d: 'M12 5v14M5 12h14' }, lock: { bg: '#F1F5F9', fg: '#0F172A', btn: '#0F172A', d: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4' }, info: { bg: '#F1F5F9', fg: '#0F172A', btn: '#0F172A', d: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01' } };
 const PRESETS = [[9, 5], [7, 4], [10, 6], [5, 3], [10, 15]];
 const ICON = { dash: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z', cat: 'M21 8l-9-5-9 5v8l9 5 9-5zM3.3 7.5L12 12l8.7-4.5M12 22V12', loc: 'M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11zM12 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z', label: 'M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01', imp: 'M12 16V4M7 9l5-5 5 5M4 20h16', hh: 'M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M8 9v6M12 9v6M16 9v6', scan: 'M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10', more: 'M5 12h.01M12 12h.01M19 12h.01', refresh: 'M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5', db: 'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6', g1: 'M4 4h16v7H4zM4 13h16v7H4z', g2: 'M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z', g3: 'M3 3h5v5H3zM9.5 3h5v5h-5zM16 3h5v5h-5zM3 9.5h5v5H3zM9.5 9.5h5v5h-5zM16 9.5h5v5h-5zM3 16h5v5H3zM9.5 16h5v5h-5zM16 16h5v5h-5z', list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01', sliders: 'M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M13 4v4M7 10v4M15 16v4', menu: 'M4 6h16M4 12h16M4 18h16', user: 'M20 21a8 8 0 0 0-16 0M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' };
@@ -587,7 +587,7 @@ class Component extends DCLogic {
     if (!j.ok) throw new Error(j.error || 'ผิดพลาด'); return j;
   }
   save(body, okMsg) { return this.call(body).then(j => { this.say(okMsg || 'บันทึกลง Google Sheets แล้ว'); return j; }).catch(e => { this.say('บันทึกไม่สำเร็จ: ' + e.message); this.loadApi(true); return null; }); }
-  persist(code) { const i = this.state.items.find(x => x.code === code); if (i) this.save({ action: 'update', code, loc: i.loc, moving: i.moving, ref: i.ref, bc: i.bc, photoCount: i.photos, isNew: i.isNew }); }
+  persist(code) { const i = this.state.items.find(x => x.code === code); if (i) this.save({ action: 'update', code, loc: i.loc, moving: i.moving, ref: i.ref, bc: i.bc, isNew: i.isNew }); }
   upd(code, fn, skip) { if (!this.state.admin) return this.deny(); this.setState(s => ({ items: s.items.map(i => i.code === code ? fn(i) : i) }), () => { if (!skip) this.persist(code); }); }
   async loadApi(quiet) {
     const api = this.api(); if (!quiet) this.setState({ loading: true, loadErr: '' });
@@ -624,7 +624,7 @@ class Component extends DCLogic {
   dlgClose(v) { const r = this._dlgRes; this._dlgRes = null; this.setState(st => ({ dlg: { ...st.dlg, open: false } })); if (r) r(v); }
   dlgOk() { const d = this.state.dlg; if (!d.open) return; if (d.validate) { const e = d.validate(d.values); if (e) { this.setState({ dlg: { ...d, error: e } }); return; } } this.dlgClose(d.fields.length ? { ...d.values } : true); }
   async delFrom(code, label, val, key) { if (!(await this.confirmD('ลบ' + label, 'ลบ' + label + ' "' + val + '" ออกจากสินค้า ' + code + ' ?', 'danger', 'ลบ'))) return; this.upd(code, i => ({ ...i, [key]: i[key].filter(y => y !== val) })); }
-  async delPhoto(code, k) { if (!(await this.confirmD('ลบรูปสินค้า', 'ลบรูปที่ ' + (k + 1) + ' ของสินค้า ' + code + ' ?', 'danger', 'ลบรูป'))) return; this.upd(code, i => ({ ...i, photos: k, thumbs: (i.thumbs || []).slice(0, k) })); }
+  async delPhoto(code, k) { if (!(await this.confirmD('ลบรูปสินค้า', 'ลบรูปที่ ' + (k + 1) + ' ของสินค้า ' + code + ' ?\nรูปอื่นยังอยู่ครบ', 'danger', 'ลบรูป'))) return; const it = this.state.items.find(i => i.code === code); const id = it && it.pids && it.pids[k]; if (id) { const j = await this.save({ action: 'delPhoto', code, id }, 'ลบรูปแล้ว'); if (!j) return; } this.upd(code, i => ({ ...i, photos: Math.max(0, i.photos - 1), thumbs: (i.thumbs || []).filter((_, n) => n !== k), pids: (i.pids || []).filter((_, n) => n !== k) }), true); }
   async login() {
     const s = this.state;
     if (s.admin) { ls('thamc_pin', null, true); this.setState({ admin: false, view: 'cat' }); return this.say('ออกจากระบบเจ้าหน้าที่แล้ว'); }
@@ -640,7 +640,7 @@ class Component extends DCLogic {
   addPhoto(code, slot, cam) {
     if (!this.state.admin) return this.deny();
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; if (cam) inp.setAttribute('capture', 'environment');
-    inp.onchange = async () => { const f = inp.files[0]; if (!f) return; const data = await this.shrink(f); this.say('กำลังอัปโหลดรูป…'); const j = await this.save({ action: 'photo', code, slot, data, mime: 'image/jpeg' }, 'อัปโหลดรูปแล้ว'); if (j) this.upd(code, i => { const th = [...(i.thumbs || [])]; th[slot] = data; return { ...i, photos: Math.max(i.photos, slot + 1), thumbs: th }; }, true); };
+    inp.onchange = async () => { const f = inp.files[0]; if (!f) return; const cur = this.state.items.find(i => i.code === code); if (cur && cur.photos >= 3) return this.say('สินค้านี้มีรูปครบ 3 รูปแล้ว ลบรูปเดิมก่อนจึงเพิ่มได้'); const data = await this.shrink(f); this.say('กำลังอัปโหลดรูป…'); const j = await this.save({ action: 'photo', code, data, mime: 'image/jpeg' }, 'เพิ่มรูปแล้ว'); if (j) this.upd(code, i => ({ ...i, photos: i.photos + 1, thumbs: [...(i.thumbs || []), data], pids: [...(i.pids || []), j.id] }), true); };
     inp.click();
   }
   norm(v) { return String(v == null ? '' : v).toUpperCase().replace(/[\s\-]/g, ''); }

@@ -57,6 +57,7 @@ function doPost(e) {
     if (b.action === 'setLocs') return json_(setLocs_(b));
     if (b.action === 'delItem') return json_(delItem_(b));
     if (b.action === 'import') return json_(importRows_(b));
+    if (b.action === 'delPhoto') return json_(delPhoto_(b));
     if (b.action === 'migrate') return json_(migratePhotos_(b));
     if (b.action === 'photo') return json_(savePhoto_(b));
     return json_({ ok: false, error: 'unknown action' });
@@ -77,8 +78,7 @@ function readItems_() {
     const code = String(r[0]), x = extra[code] || [];
     const gcode = String(r[11] || code.slice(0, 6));
     const mainId = driveId_(r[9]);
-    const ids = [x[3], x[4], x[5]].map(v => driveId_(v)).filter(Boolean);
-    if (!ids.length && mainId) ids.push(mainId);
+    const ids = [...new Set([mainId, driveId_(x[3]), driveId_(x[4]), driveId_(x[5])].filter(Boolean))].slice(0, 3);
     return {
       code, tuh: String(r[1] || ''), name: String(r[2] || ''), loc: String(r[3] || ''), vendor: String(r[4] || ''),
       exp: fmtDate_(r[5]), uom: String(r[6] || ''), cost: Number(r[7]) || 0, qty: Number(r[8]) || 0,
@@ -189,20 +189,37 @@ function updateItem_(b) {
   return { ok: true };
 }
 
+/** เพิ่มรูป (ต่อท้าย ไม่ทับรูปเดิม) — สูงสุด 3 รูปต่อสินค้า รูปแรกจะถูกใช้เป็นรูปหลักในคอลัมน์ J */
 function savePhoto_(b) {
-  const slot = Math.max(0, Math.min(2, Number(b.slot) || 0));
+  const sh = items_(), row = findRow_(sh, b.code);
+  if (!row) return { ok: false, error: 'ไม่พบรหัส ' + b.code };
+  const ex = extraRow_(b.code), cur = ex.sh.getRange(ex.row, 4, 1, 3).getValues()[0].map(v => String(v || ''));
+  const jId = driveId_(sh.getRange(row, 10).getValue());
+  const have = new Set([jId, ...cur.map(driveId_)].filter(Boolean));
+  if (have.size >= 3) return { ok: false, error: 'สินค้านี้มีรูปครบ 3 รูปแล้ว ลบรูปเดิมก่อน' };
+  const slot = cur.findIndex(v => !v);
+  if (slot < 0) return { ok: false, error: 'ช่องเก็บรูปเต็ม ลบรูปเดิมก่อน' };
   const bytes = Utilities.base64Decode(String(b.data).replace(/^data:[^,]+,/, ''));
-  const blob = Utilities.newBlob(bytes, b.mime || 'image/jpeg', b.code + (slot ? '_' + slot : '') + '.jpg');
+  const blob = Utilities.newBlob(bytes, b.mime || 'image/jpeg', b.code + '_' + Date.now() + '.jpg');
   const file = folder_().createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  const ex = extraRow_(b.code);
   ex.sh.getRange(ex.row, 4 + slot).setValue(file.getUrl());
-  if (slot === 0) {
-    const sh = items_(), row = findRow_(sh, b.code);
-    if (row) sh.getRange(row, 10).setValue(file.getUrl());
-  }
-  log_(b.user, 'photo', b.code, 'slot ' + (slot + 1) + ' ' + file.getId());
+  if (!jId) sh.getRange(row, 10).setValue(file.getUrl());
+  log_(b.user, 'photo', b.code, 'add ' + file.getId());
   return { ok: true, id: file.getId(), slot };
+}
+
+/** ลบรูปเดียวตามรหัสไฟล์ Drive (ถอดลิงก์ออกจากชีต ไม่ลบไฟล์ใน Drive) */
+function delPhoto_(b) {
+  const id = String(b.id || ''); if (!id) return { ok: false, error: 'ไม่พบรหัสรูป' };
+  const sh = items_(), row = findRow_(sh, b.code);
+  if (!row) return { ok: false, error: 'ไม่พบรหัส ' + b.code };
+  if (driveId_(sh.getRange(row, 10).getValue()) === id) sh.getRange(row, 10).setValue('');
+  const ex = extraRow_(b.code), rng = ex.sh.getRange(ex.row, 4, 1, 3), v = rng.getValues()[0].map(x => driveId_(x) === id ? '' : x);
+  rng.setValues([v]);
+  if (!String(sh.getRange(row, 10).getValue() || '')) { const first = v.find(Boolean); if (first) sh.getRange(row, 10).setValue(first); }
+  log_(b.user, 'photo', b.code, 'remove ' + id);
+  return { ok: true };
 }
 
 /**
