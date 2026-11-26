@@ -737,7 +737,7 @@ class Component extends DCLogic {
     if (!list.length) return this.say('ไม่มีสินค้าให้พิมพ์');
     if (list.length > 400 && !(await this.confirmD('พิมพ์จำนวนมาก', 'จะพิมพ์ ' + list.length + ' ป้าย ดำเนินการต่อ?', 'info', 'พิมพ์'))) return;
     const lb = this.state.lb, W = lb.w || 9, H = lb.h || 5, a4 = lb.layout === 'a4';
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>ป้าย Location</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap"><style>@page{size:${a4 ? 'A4' : W + 'cm ' + H + 'cm'};margin:${a4 ? '8mm' : '0'}}html,body{margin:0;background:#fff;font-family:'IBM Plex Sans Thai',Tahoma,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}${a4 ? '.w{display:flex;flex-wrap:wrap;gap:3mm}.c{outline:0.3mm dashed #888;break-inside:avoid}' : '.c{page-break-after:always;break-after:page}'}</style></head><body>${a4 ? '<div class="w">' : ''}${list.map(i => this.labelHtml(i, lb)).join('')}${a4 ? '</div>' : ''}<script>if('serviceWorker' in navigator&&location.protocol!=='file:'){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script></body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>ป้าย Location</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap"><style>@page{size:${a4 ? 'A4' : W + 'cm ' + H + 'cm'};margin:${a4 ? '8mm' : '0'}}html,body{margin:0;background:#fff;font-family:'IBM Plex Sans Thai',Tahoma,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}${a4 ? '.w{display:flex;flex-wrap:wrap;gap:3mm}.c{outline:0.3mm dashed #888;break-inside:avoid}' : '.c{page-break-after:always;break-after:page}'}</style></head><body>${a4 ? '<div class="w">' : ''}${list.map(i => this.labelHtml(i, lb)).join('')}${a4 ? '</div>' : ''}</body></html>`;
     const w = window.open('', '_blank'); if (!w) return this.say('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ ให้อนุญาตป๊อปอัปแล้วลองใหม่');
     w.document.open(); w.document.write(html); w.document.close(); this.say('กำลังเปิดหน้าต่างพิมพ์ ' + list.length + ' ป้าย');
     setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 1200);
@@ -944,5 +944,6 @@ class Component extends DCLogic {
   }
 }
 </script>
+<script>if('serviceWorker' in navigator&&location.protocol!=='file:'){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
 </body>
 </html>
