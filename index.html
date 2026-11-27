@@ -607,7 +607,8 @@ class Component extends DCLogic {
     if (!j.ok) throw new Error(j.error || 'ผิดพลาด'); return j;
   }
   save(body, okMsg) { return this.call(body).then(j => { this.say(okMsg || 'บันทึกลง Google Sheets แล้ว'); return j; }).catch(e => { this.say('บันทึกไม่สำเร็จ: ' + e.message); this.loadApi(true); return null; }); }
-  persist(code) { const i = this.state.items.find(x => x.code === code); if (i) this.save({ action: 'update', code, loc: i.loc, moving: i.moving, ref: i.ref, bc: i.bc, isNew: i.isNew }); }
+  persist(code) { const i = this.state.items.find(x => x.code === code); if (i) this.save({ action: 'update', code, loc: i.loc, moving: i.moving, isNew: i.isNew }); }
+  async listOp(code, field, op, value, okMsg) { try { const j = await this.call({ action: 'listOp', code, field, op, value }); this.setState(s => ({ items: s.items.map(i => i.code === code ? { ...i, [field]: j.list } : i) })); this.say(okMsg); } catch (e) { this.say('บันทึกไม่สำเร็จ: ' + (e && e.message ? e.message : e)); } }
   upd(code, fn, skip) { if (!this.state.admin) return this.deny(); this.setState(s => ({ items: s.items.map(i => i.code === code ? fn(i) : i) }), () => { if (!skip) this.persist(code); }); }
   async loadApi(quiet) {
     const api = this.api(); if (!quiet) this.setState({ loading: true, loadErr: '' });
@@ -631,6 +632,8 @@ class Component extends DCLogic {
     else if (!open && this._ov) { this._ov = false; if (history.state && history.state.ov) { this._skipPop = true; history.back(); } }
   }
   componentDidMount() {
+    this._poll = setInterval(() => { const s = this.state; if (document.hidden || s.dlg.open || s.loading) return; this.loadApi(true); }, 30000);
+    this._vis = () => { if (!document.hidden && !this.state.dlg.open) this.loadApi(true); }; document.addEventListener('visibilitychange', this._vis);
     this._pop = () => { if (this._skipPop) { this._skipPop = false; return; } const s = this.state; if (s.pv.open) { this.setState({ pv: { open: false, code: '', k: 0 } }); return; } if (s.detail || s.scanOpen || s.fsOpen || s.more || s.assign.open) { this.stopCam(); this.setState({ detail: null, scanOpen: false, scanMsg: null, fsOpen: false, more: false, assign: { open: false, slot: '', q: '' } }); } };
     window.addEventListener('popstate', this._pop);
     this._rs = () => this.setState({ w: window.innerWidth }); window.addEventListener('resize', this._rs);
@@ -643,7 +646,7 @@ class Component extends DCLogic {
   async confirmD(title, message, tone, okLabel) { return !!(await this.ask({ title, message, tone, okLabel })); }
   dlgClose(v) { const r = this._dlgRes; this._dlgRes = null; this.setState(st => ({ dlg: { ...st.dlg, open: false } })); if (r) r(v); }
   dlgOk() { const d = this.state.dlg; if (!d.open) return; if (d.validate) { const e = d.validate(d.values); if (e) { this.setState({ dlg: { ...d, error: e } }); return; } } this.dlgClose(d.fields.length ? { ...d.values } : true); }
-  async delFrom(code, label, val, key) { if (!(await this.confirmD('ลบ' + label, 'ลบ' + label + ' "' + val + '" ออกจากสินค้า ' + code + ' ?', 'danger', 'ลบ'))) return; this.upd(code, i => ({ ...i, [key]: i[key].filter(y => y !== val) })); }
+  async delFrom(code, label, val, key) { if (!(await this.confirmD('ลบ' + label, 'ลบ' + label + ' "' + val + '" ออกจากสินค้า ' + code + ' ?', 'danger', 'ลบ'))) return; if (!this.state.admin) return this.deny(); await this.listOp(code, key, 'del', val, 'ลบแล้ว'); }
   async delPhoto(code, k) { if (!(await this.confirmD('ลบรูปสินค้า', 'ลบรูปที่ ' + (k + 1) + ' ของสินค้า ' + code + ' ?\nรูปอื่นยังอยู่ครบ', 'danger', 'ลบรูป'))) return; const it = this.state.items.find(i => i.code === code); const id = it && it.pids && it.pids[k]; if (id) { const j = await this.save({ action: 'delPhoto', code, id }, 'ลบรูปแล้ว'); if (!j) return; } this.upd(code, i => ({ ...i, photos: Math.max(0, i.photos - 1), thumbs: (i.thumbs || []).filter((_, n) => n !== k), pids: (i.pids || []).filter((_, n) => n !== k) }), true); }
   async login() {
     const s = this.state;
@@ -724,7 +727,7 @@ class Component extends DCLogic {
     if (mode === 'hhBc') {
       if (!s.hh.item) return this.say('สแกนสินค้าก่อน');
       if (it) { this.setState({ scanMsg: { text: it.code === s.hh.item ? 'บาร์โค้ดนี้ผูกกับสินค้านี้แล้ว' : 'บาร์โค้ดนี้ซ้ำกับสินค้า ' + it.code + ' · ' + it.name, val: '' } }); return; }
-      this.feedback(); this.stopCam(); this.setState({ scanOpen: false, scanMsg: null }); this.confirmD('เพิ่มบาร์โค้ด', 'เพิ่มบาร์โค้ด ' + v + '\nให้สินค้า ' + s.hh.item + ' ?', 'add', 'เพิ่ม').then(ok => ok && this.upd(s.hh.item, i => ({ ...i, bc: [...i.bc, v] }))); return;
+      this.feedback(); this.stopCam(); this.setState({ scanOpen: false, scanMsg: null }); this.confirmD('เพิ่มบาร์โค้ด', 'เพิ่มบาร์โค้ด ' + v + '\nให้สินค้า ' + s.hh.item + ' ?', 'add', 'เพิ่ม').then(ok => ok && this.listOp(s.hh.item, 'bc', 'add', v, 'เพิ่มบาร์โค้ดแล้ว')); return;
     }
     if (!it) {
       const p = locParts(v); if (p) { this.feedback(); this.stopCam(); this.setState({ scanOpen: false, scanMsg: null, view: 'cat', q: v.toUpperCase(), zone: 'ทั้งหมด', ct: 'ทั้งหมด', mv: 'ทั้งหมด', limit: 48 }); return this.say('ค้นหา Location ' + v.toUpperCase()); }
@@ -919,8 +922,8 @@ class Component extends DCLogic {
     if (hhCab && cm.has(hhCab)) { const c = cm.get(hhCab); for (let a = 1; a <= c.shelves && free.length < 8; a++) for (let b = 1; b <= c.slots && free.length < 8; b++) { const id = hhCab + '-' + pad2(a) + '-' + pad2(b); if (!occ[id]) free.push({ id, pick: () => setHh({ newLoc: id }) }); } }
     const hh = hhI ? { has: true, code: hhI.code, name: hhI.name, uom: hhI.uom, qty: hhI.qty, locText: hhI.loc || '-', hasImg: !!(hhI.thumbs && hhI.thumbs[0]), imgSrc: hhI.thumbs && hhI.thumbs[0], newLoc: s.hh.newLoc, newLocText: newLoc || '-', occText: others.length ? 'ช่องนี้มีสินค้าอยู่แล้ว ' + others.length + ' รายการ: ' + others.slice(0, 2).map(i => i.name).join(' / ') + ' · ย้ายซ้อนได้' : '', bcCount: hhI.bc.length, refCount: hhI.ref.length, photos: hhI.photos, find: s.hh.find, newBc: s.hh.newBc, newRef: s.hh.newRef } : { has: false, find: s.hh.find };
     const hhPhotos = hhI ? [0, 1, 2].map(k => { const on = k < hhI.photos; return { label: on ? (hhI.thumbs && hhI.thumbs[k] ? '' : 'รูป ' + (k + 1)) : '+ ถ่ายรูป', bg: on ? (hhI.thumbs && hhI.thumbs[k] ? '#E2E8F0 center/cover no-repeat url(' + hhI.thumbs[k] + ')' : '#E2E8F0') : '#fff', bd: on ? '1px solid #CBD5E1' : '1.5px dashed #94A3B8', tap: () => on ? this.setState({ pv: { open: true, code: hhI.code, k } }) : this.addPhoto(hhI.code, k, true) }; }) : [];
-    const addBc = async (code, val) => { val = String(val).trim(); if (!val) return; const o = this.findItem(val); if (o) return say(o.code === code ? 'บาร์โค้ดนี้ผูกกับสินค้านี้แล้ว' : 'บาร์โค้ดนี้ซ้ำกับสินค้า ' + o.code); if (!(await this.confirmD('เพิ่มบาร์โค้ด', 'เพิ่มบาร์โค้ด ' + val + '\nให้สินค้า ' + code + ' ?', 'add', 'เพิ่ม'))) return; this.upd(code, i => ({ ...i, bc: [...i.bc, val] })); };
-    const addRef = async (code, val) => { val = String(val).trim(); if (!val) return; if (!(await this.confirmD('เพิ่มเลข REF', 'เพิ่ม REF ' + val + '\nให้สินค้า ' + code + ' ?', 'add', 'เพิ่ม'))) return; this.upd(code, i => i.ref.includes(val) ? i : ({ ...i, ref: [...i.ref, val] })); };
+    const addBc = async (code, val) => { val = String(val).trim(); if (!val) return; const o = this.findItem(val); if (o) return say(o.code === code ? 'บาร์โค้ดนี้ผูกกับสินค้านี้แล้ว' : 'บาร์โค้ดนี้ซ้ำกับสินค้า ' + o.code); if (!(await this.confirmD('เพิ่มบาร์โค้ด', 'เพิ่มบาร์โค้ด ' + val + '\nให้สินค้า ' + code + ' ?', 'add', 'เพิ่ม'))) return; if (!this.state.admin) return this.deny(); await this.listOp(code, 'bc', 'add', val, 'เพิ่มบาร์โค้ดแล้ว'); };
+    const addRef = async (code, val) => { val = String(val).trim(); if (!val) return; if (!(await this.confirmD('เพิ่มเลข REF', 'เพิ่ม REF ' + val + '\nให้สินค้า ' + code + ' ?', 'add', 'เพิ่ม'))) return; if (!this.state.admin) return this.deny(); await this.listOp(code, 'ref', 'add', val, 'เพิ่ม REF แล้ว'); };
     /* detail */
     const d0 = s.detail ? byCode(s.detail) : null;
     const d = d0 ? { open: true, ...d0, hasLoc: !!d0.loc, canRelabel: admin && !!d0.loc, relabel: !!s.flags[d0.loc], relabelBg: s.flags[d0.loc] ? '#FEF3C7' : '#fff', relabelText: s.flags[d0.loc] ? 'ต้องพิมพ์ป้ายใหม่ · แตะเพื่อยกเลิก' : 'ติ๊กว่าต้องพิมพ์ป้ายใหม่', toggleRelabel: () => this.setFlags([d0.loc], !s.flags[d0.loc]), locText: d0.loc || '-', tuhText: d0.tuh || '-', costText: Number(d0.cost).toLocaleString('en-US', { minimumFractionDigits: 2 }), cat: d0.cat || '-', hasImg: !!(d0.thumbs && d0.thumbs[0]), imgSrc: d0.thumbs && d0.thumbs[0], qr: qrUri(d0.code), photoHint: admin ? 'แตะช่องว่างเพื่อเพิ่มรูป · แตะรูปเพื่อดูเต็มจอ / ลบ' : 'แตะรูปเพื่อดูเต็มจอ', openMain: () => { if (d0.photos > 0) this.setState({ pv: { open: true, code: d0.code, k: 0 } }); }, mainCursor: d0.photos > 0 ? 'zoom-in' : 'default', mvText: d0.moving ? 'เคลื่อนไหว' : 'ไม่เคลื่อนไหว', newBtn: d0.isNew ? 'ยกเลิก New!' : 'ทำเครื่องหมาย New!',

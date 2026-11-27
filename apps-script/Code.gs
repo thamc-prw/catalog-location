@@ -53,6 +53,7 @@ function doPost(e) {
     if (b.adminPin !== CFG.ADMIN_PIN) return json_({ ok: false, error: 'ต้องเป็นแอดมินเท่านั้น' });
     if (b.action === 'login') return json_({ ok: true });
     if (b.action === 'update') return json_(updateItem_(b));
+    if (b.action === 'listOp') return json_(listOp_(b));
     if (b.action === 'cab') return json_(saveCab_(b));
     if (b.action === 'labelFlag') return json_(setFlags_(b));
     if (b.action === 'delCab') return json_(delCab_(b));
@@ -182,6 +183,25 @@ function importRows_(b) {
   log_(b.user, 'import', '', 'added ' + added + ', updated ' + updated);
   return { ok: true, added, updated };
 }
+/** เพิ่ม/ลบค่าเดียวใน REF หรือบาร์โค้ด โดยอ่านค่าล่าสุดจากชีตก่อนแก้ (ไม่ทับงานของคนอื่น) */
+function listOp_(b) {
+  const sh = items_(), row = findRow_(sh, b.code);
+  if (!row) return { ok: false, error: 'ไม่พบรหัส ' + b.code };
+  const col = b.field === 'bc' ? 3 : 2, v = String(b.value || '').trim();
+  if (!v) return { ok: false, error: 'ไม่มีค่า' };
+  if (b.op === 'add' && col === 3) {
+    const all = ss_().getSheetByName(CFG.SHEET_EXTRA); const n = all.getLastRow();
+    if (n > 1) { const d = all.getRange(2, 1, n - 1, 3).getValues(); for (const r of d) if (String(r[0]) !== String(b.code) && String(r[2]).split(SEP).map(x => x.trim()).indexOf(v) >= 0) return { ok: false, error: 'บาร์โค้ดนี้ซ้ำกับสินค้า ' + r[0] }; }
+  }
+  const ex = extraRow_(b.code), cell = ex.sh.getRange(ex.row, col);
+  let list = String(cell.getValue() || '').split(SEP).map(x => x.trim()).filter(Boolean);
+  if (b.op === 'add') { if (list.indexOf(v) < 0) list.push(v); } else list = list.filter(x => x !== v);
+  cell.setValue(list.join(SEP));
+  ex.sh.getRange(ex.row, 8).setValue(new Date());
+  log_(b.user, 'update', b.code, b.field + ' ' + b.op + ' ' + v);
+  return { ok: true, list: list };
+}
+
 function updateItem_(b) {
   const ss = ss_(), sh = items_();
   const row = findRow_(sh, b.code);
