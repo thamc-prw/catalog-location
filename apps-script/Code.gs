@@ -13,6 +13,7 @@ const CFG = {
   SHEET_EXTRA: 'Extra',
   SHEET_LOG: 'Log',
   SHEET_LOC: 'Locations',
+  SHEET_FLAG: 'LabelFlags',
   SPREADSHEET_ID: '',   // ใส่ ID ของ Google Sheet ถ้าสร้างสคริปต์แบบ standalone (ไม่ได้เปิดจาก Extensions > Apps Script ในไฟล์ Sheet)
   PHOTO_FOLDER_ID: '',   // ใส่ ID โฟลเดอร์ Google Drive สำหรับเก็บรูป (ปล่อยว่าง = สร้างโฟลเดอร์ "THAMC Item Photos")
   ADMIN_PIN: '1234',     // รหัสผ่านแอดมิน (เปลี่ยนก่อนใช้งานจริง) — เฉพาะแอดมินเท่านั้นที่เขียนข้อมูลได้
@@ -24,7 +25,7 @@ const SEP = '|';
 /** รันครั้งเดียวจากตัวแก้ไข Apps Script เพื่อสร้างแท็บ Extra / Log */
 function setup() {
   const ss = ss_();
-  [[CFG.SHEET_EXTRA, EXTRA_HEAD], [CFG.SHEET_LOG, ['time', 'user', 'action', 'code', 'detail']], [CFG.SHEET_LOC, ['cab', 'shelves', 'slots']]].forEach(([n, h]) => {
+  [[CFG.SHEET_EXTRA, EXTRA_HEAD], [CFG.SHEET_LOG, ['time', 'user', 'action', 'code', 'detail']], [CFG.SHEET_LOC, ['cab', 'shelves', 'slots']], [CFG.SHEET_FLAG, ['loc', 'time']]].forEach(([n, h]) => {
     let sh = ss.getSheetByName(n) || ss.insertSheet(n);
     if (sh.getLastRow() === 0) { sh.appendRow(h); sh.setFrozenRows(1); }
   });
@@ -35,7 +36,7 @@ function doGet(e) {
   try {
     auth_(e.parameter.token);
     const a = e.parameter.action || 'items';
-    if (a === 'items') return json_({ ok: true, items: readItems_(), groups: readGroups_(), cabs: readCabs_() });
+    if (a === 'items') return json_({ ok: true, items: readItems_(), groups: readGroups_(), cabs: readCabs_(), flags: readFlags_() });
     if (a === 'item') return json_({ ok: true, item: readItems_().find(i => i.code === e.parameter.code) || null });
     if (a === 'login') return json_({ ok: e.parameter.pin === CFG.ADMIN_PIN });
     if (a === 'ping') return json_({ ok: true, time: new Date() });
@@ -53,6 +54,7 @@ function doPost(e) {
     if (b.action === 'login') return json_({ ok: true });
     if (b.action === 'update') return json_(updateItem_(b));
     if (b.action === 'cab') return json_(saveCab_(b));
+    if (b.action === 'labelFlag') return json_(setFlags_(b));
     if (b.action === 'delCab') return json_(delCab_(b));
     if (b.action === 'setLocs') return json_(setLocs_(b));
     if (b.action === 'delItem') return json_(delItem_(b));
@@ -91,6 +93,23 @@ function readGroups_() {
   const sh = ss_().getSheetByName(CFG.SHEET_GROUPS), g = {};
   if (sh) sh.getDataRange().getValues().slice(1).forEach(r => { if (r[0] !== '') g[String(r[0])] = String(r[1]); });
   return g;
+}
+
+function readFlags_() {
+  const sh = ss_().getSheetByName(CFG.SHEET_FLAG);
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues().map(r => String(r[0])).filter(Boolean);
+}
+/** ติ๊ก/ยกเลิก "ต้องพิมพ์ป้าย Location ใหม่": locs = ['A23-01-04', ...], on = true/false */
+function setFlags_(b) {
+  const s = ss_(); let sh = s.getSheetByName(CFG.SHEET_FLAG);
+  if (!sh) { setup(); sh = s.getSheetByName(CFG.SHEET_FLAG); }
+  const cur = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues().map(r => String(r[0])) : [];
+  const want = new Set((b.locs || []).map(String));
+  if (b.on) { const add = [...want].filter(l => cur.indexOf(l) < 0); add.forEach(l => sh.appendRow([l, new Date()])); }
+  else for (let i = cur.length - 1; i >= 0; i--) if (want.has(cur[i])) sh.deleteRow(i + 2);
+  log_(b.user, 'labelFlag', '', (b.on ? 'on ' : 'off ') + [...want].join(','));
+  return { ok: true };
 }
 
 function readCabs_() {
