@@ -14,6 +14,7 @@ const CFG = {
   SHEET_LOG: 'Log',
   SHEET_LOC: 'Locations',
   SHEET_FLAG: 'LabelFlags',
+  SHEET_TPL: 'Templates',
   SPREADSHEET_ID: '',   // ใส่ ID ของ Google Sheet ถ้าสร้างสคริปต์แบบ standalone (ไม่ได้เปิดจาก Extensions > Apps Script ในไฟล์ Sheet)
   PHOTO_FOLDER_ID: '',   // ใส่ ID โฟลเดอร์ Google Drive สำหรับเก็บรูป (ปล่อยว่าง = สร้างโฟลเดอร์ "THAMC Item Photos")
   ADMIN_PIN: '1234',     // รหัสผ่านแอดมิน (เปลี่ยนก่อนใช้งานจริง) — เฉพาะแอดมินเท่านั้นที่เขียนข้อมูลได้
@@ -25,7 +26,7 @@ const SEP = '|';
 /** รันครั้งเดียวจากตัวแก้ไข Apps Script เพื่อสร้างแท็บ Extra / Log */
 function setup() {
   const ss = ss_();
-  [[CFG.SHEET_EXTRA, EXTRA_HEAD], [CFG.SHEET_LOG, ['time', 'user', 'action', 'code', 'detail']], [CFG.SHEET_LOC, ['cab', 'shelves', 'slots']], [CFG.SHEET_FLAG, ['loc', 'time']]].forEach(([n, h]) => {
+  [[CFG.SHEET_EXTRA, EXTRA_HEAD], [CFG.SHEET_LOG, ['time', 'user', 'action', 'code', 'detail']], [CFG.SHEET_LOC, ['cab', 'shelves', 'slots']], [CFG.SHEET_FLAG, ['loc', 'time']], [CFG.SHEET_TPL, ['name', 'json', 'time', 'user']]].forEach(([n, h]) => {
     let sh = ss.getSheetByName(n) || ss.insertSheet(n);
     if (sh.getLastRow() === 0) { sh.appendRow(h); sh.setFrozenRows(1); }
   });
@@ -36,7 +37,7 @@ function doGet(e) {
   try {
     auth_(e.parameter.token);
     const a = e.parameter.action || 'items';
-    if (a === 'items') return json_({ ok: true, items: readItems_(), groups: readGroups_(), cabs: readCabs_(), flags: readFlags_() });
+    if (a === 'items') return json_({ ok: true, items: readItems_(), groups: readGroups_(), cabs: readCabs_(), flags: readFlags_(), tpls: readTpls_() });
     if (a === 'item') return json_({ ok: true, item: readItems_().find(i => i.code === e.parameter.code) || null });
     if (a === 'login') return json_({ ok: e.parameter.pin === CFG.ADMIN_PIN });
     if (a === 'log') return json_({ ok: true, rows: readLog_() });
@@ -56,6 +57,8 @@ function doPost(e) {
     if (b.action === 'update') return json_(updateItem_(b));
     if (b.action === 'listOp') return json_(listOp_(b));
     if (b.action === 'cab') return json_(saveCab_(b));
+    if (b.action === 'tplSave') return json_(tplSave_(b));
+    if (b.action === 'tplDel') return json_(tplDel_(b));
     if (b.action === 'labelFlag') return json_(setFlags_(b));
     if (b.action === 'delCab') return json_(delCab_(b));
     if (b.action === 'setLocs') return json_(setLocs_(b));
@@ -103,6 +106,27 @@ function readLog_() {
   if (!sh || sh.getLastRow() < 2) return [];
   const n = Math.min(800, sh.getLastRow() - 1), start = sh.getLastRow() - n + 1;
   return sh.getRange(start, 1, n, 5).getValues().map(r => ({ time: r[0], user: String(r[1]), action: String(r[2]), code: String(r[3]), detail: String(r[4]) })).reverse();
+}
+/** เทมเพลตป้าย (ใช้ร่วมกันทุกเครื่อง) ใหม่สุดก่อน */
+function tplSheet_() { const s = ss_(); let sh = s.getSheetByName(CFG.SHEET_TPL); if (!sh) { setup(); sh = s.getSheetByName(CFG.SHEET_TPL); } return sh; }
+function readTpls_() {
+  const sh = ss_().getSheetByName(CFG.SHEET_TPL);
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 3).getValues().map(r => ({ name: String(r[0]), json: String(r[1]), t: +new Date(r[2]) || 0 })).filter(x => x.name).sort((a, b) => b.t - a.t).map(x => ({ name: x.name, json: x.json }));
+}
+function tplSave_(b) {
+  const name = String(b.name || '').trim(); if (!name) return { ok: false, error: 'ไม่มีชื่อเทมเพลต' };
+  const sh = tplSheet_(), n = sh.getLastRow(), names = n > 1 ? sh.getRange(2, 1, n - 1, 1).getValues().map(r => String(r[0])) : [], i = names.indexOf(name);
+  if (i >= 0) sh.getRange(i + 2, 1, 1, 4).setValues([[name, String(b.json), new Date(), b.user || '']]); else sh.appendRow([name, String(b.json), new Date(), b.user || '']);
+  log_(b.user, 'template', '', 'save ' + name);
+  return { ok: true };
+}
+function tplDel_(b) {
+  const sh = tplSheet_(), n = sh.getLastRow(); if (n < 2) return { ok: true };
+  const names = sh.getRange(2, 1, n - 1, 1).getValues().map(r => String(r[0]));
+  for (let i = names.length - 1; i >= 0; i--) if (names[i] === String(b.name)) sh.deleteRow(i + 2);
+  log_(b.user, 'template', '', 'delete ' + b.name);
+  return { ok: true };
 }
 function readFlags_() {
   const sh = ss_().getSheetByName(CFG.SHEET_FLAG);
