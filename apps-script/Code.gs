@@ -39,6 +39,7 @@ function doGet(e) {
     if (a === 'items') return json_({ ok: true, items: readItems_(), groups: readGroups_(), cabs: readCabs_(), flags: readFlags_() });
     if (a === 'item') return json_({ ok: true, item: readItems_().find(i => i.code === e.parameter.code) || null });
     if (a === 'login') return json_({ ok: e.parameter.pin === CFG.ADMIN_PIN });
+    if (a === 'log') return json_({ ok: true, rows: readLog_() });
     if (a === 'ping') return json_({ ok: true, time: new Date() });
     return json_({ ok: false, error: 'unknown action' });
   } catch (err) { return json_({ ok: false, error: String(err) }); }
@@ -96,6 +97,13 @@ function readGroups_() {
   return g;
 }
 
+/** ประวัติล่าสุด 800 รายการ (ใหม่สุดก่อน) จากแท็บ Log */
+function readLog_() {
+  const sh = ss_().getSheetByName(CFG.SHEET_LOG);
+  if (!sh || sh.getLastRow() < 2) return [];
+  const n = Math.min(800, sh.getLastRow() - 1), start = sh.getLastRow() - n + 1;
+  return sh.getRange(start, 1, n, 5).getValues().map(r => ({ time: r[0], user: String(r[1]), action: String(r[2]), code: String(r[3]), detail: String(r[4]) })).reverse();
+}
 function readFlags_() {
   const sh = ss_().getSheetByName(CFG.SHEET_FLAG);
   if (!sh || sh.getLastRow() < 2) return [];
@@ -109,7 +117,7 @@ function setFlags_(b) {
   const want = new Set((b.locs || []).map(String));
   if (b.on) { const add = [...want].filter(l => cur.indexOf(l) < 0); add.forEach(l => sh.appendRow([l, new Date()])); }
   else for (let i = cur.length - 1; i >= 0; i--) if (want.has(cur[i])) sh.deleteRow(i + 2);
-  log_(b.user, 'labelFlag', '', (b.on ? 'on ' : 'off ') + [...want].join(','));
+  log_(b.user, b.reason === 'print' ? 'labelPrint' : 'labelFlag', '', (b.on ? 'on ' : 'off ') + [...want].join(','));
   return { ok: true };
 }
 
